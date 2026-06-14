@@ -7,6 +7,15 @@ __pycache__/
 # 환경 변수 (절대 커밋 금지)
 .env
 
+# TTS 프리셋 & 생성 파일
+data/tts_presets.json
+outputs/audio/*.mp3
+
+# Google Cloud Credentials (절대 커밋 금지)
+*.json
+!package.json
+!tsconfig.json
+
 # Next.js 잔재
 node_modules/
 .next/

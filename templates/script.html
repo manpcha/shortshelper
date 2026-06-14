@@ -78,7 +78,7 @@
 
   <!-- 결과 영역 -->
   <div class="col-right">
-    <div class="section-card result-card" id="sc-resultCard" style="display:none">
+    <div class="section-card result-card hidden" id="sc-resultCard">
       <div class="result-header">
         <h3 class="section-title">📄 생성된 대본</h3>
         <div class="result-actions">
@@ -96,6 +96,121 @@
         <summary>전체 텍스트 보기</summary>
         <pre id="sc-rawScript" class="raw-script"></pre>
       </details>
+    </div>
+
+    <!-- ── TTS 섹션 ──────────────────────────────────────────── -->
+    <div class="section-card hidden" id="tts-card">
+      <h3 class="section-title">🎙️ TTS 음성 생성</h3>
+
+      <!-- TTS 텍스트 -->
+      <div class="form-group">
+        <label class="form-label">음성으로 변환할 텍스트</label>
+        <textarea id="tts-text" class="form-textarea" rows="5"
+                  placeholder="대본이 여기에 자동으로 채워집니다. 직접 편집할 수 있습니다."></textarea>
+      </div>
+
+      <!-- 제공자 + 음성 불러오기 -->
+      <div class="form-row" style="align-items:flex-end;gap:8px">
+        <div class="form-group flex1">
+          <label class="form-label">TTS 제공자</label>
+          <select id="tts-provider" class="form-select">
+            <option value="elevenlabs">ElevenLabs</option>
+            <option value="google">Google Cloud TTS</option>
+          </select>
+        </div>
+        <div class="form-group" style="padding-bottom:2px">
+          <button id="tts-loadVoicesBtn" class="btn btn-ghost btn-sm" style="white-space:nowrap">
+            📋 음성 목록 불러오기
+          </button>
+        </div>
+      </div>
+
+      <!-- 음성 선택 -->
+      <div class="form-group">
+        <label class="form-label">음성 선택</label>
+        <select id="tts-voice" class="form-select">
+          <option value="">-- 음성 목록을 먼저 불러오세요 --</option>
+        </select>
+      </div>
+
+      <!-- 속도 -->
+      <div class="form-group">
+        <label class="form-label">속도&nbsp;<span id="tts-rateVal" class="form-badge">1.0x</span></label>
+        <input type="range" id="tts-rate" class="tts-range" min="0.5" max="2.0" step="0.1" value="1.0" />
+      </div>
+
+      <!-- ElevenLabs 전용 옵션 -->
+      <div id="tts-elOptions">
+        <div class="form-row" style="gap:16px">
+          <div class="form-group flex1">
+            <label class="form-label">Stability&nbsp;<span id="tts-stabilityVal" class="form-badge">0.50</span></label>
+            <input type="range" id="tts-stability" class="tts-range" min="0" max="1" step="0.05" value="0.5" />
+          </div>
+          <div class="form-group flex1">
+            <label class="form-label">Similarity Boost&nbsp;<span id="tts-similarityVal" class="form-badge">0.75</span></label>
+            <input type="range" id="tts-similarity" class="tts-range" min="0" max="1" step="0.05" value="0.75" />
+          </div>
+        </div>
+        <div class="form-row" style="gap:16px">
+          <div class="form-group flex1">
+            <label class="form-label">Style&nbsp;<span id="tts-styleVal" class="form-badge">0.00</span></label>
+            <input type="range" id="tts-style" class="tts-range" min="0" max="1" step="0.05" value="0" />
+          </div>
+          <div class="form-group flex1" style="display:flex;align-items:center;padding-top:22px">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--text-2)">
+              <input type="checkbox" id="tts-speakerBoost" checked
+                     style="width:15px;height:15px;accent-color:var(--accent)" />
+              Speaker Boost
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Google 전용 옵션 -->
+      <div id="tts-googleOptions" class="hidden">
+        <div class="form-group">
+          <label class="form-label">Pitch&nbsp;<span id="tts-pitchVal" class="form-badge">0.0</span></label>
+          <input type="range" id="tts-pitch" class="tts-range" min="-10" max="10" step="0.5" value="0" />
+        </div>
+      </div>
+
+      <!-- 프리셋 저장 -->
+      <div class="tts-preset-row">
+        <div class="form-group flex1">
+          <label class="form-label">프리셋 이름</label>
+          <input type="text" id="tts-presetName" class="form-input" placeholder="예: 밝은 여성 목소리" />
+        </div>
+        <div style="align-self:flex-end">
+          <button id="tts-savePresetBtn" class="btn btn-secondary btn-sm">💾 프리셋 저장</button>
+        </div>
+      </div>
+
+      <!-- 프리셋 선택 -->
+      <div class="tts-preset-row">
+        <div class="form-group flex1">
+          <label class="form-label">저장된 프리셋</label>
+          <select id="tts-presetSelect" class="form-select">
+            <option value="">-- 프리셋 선택 --</option>
+          </select>
+        </div>
+        <div style="align-self:flex-end">
+          <button id="tts-deletePresetBtn" class="btn btn-danger btn-sm">🗑️ 삭제</button>
+        </div>
+      </div>
+
+      <!-- 생성 버튼 -->
+      <button id="tts-generateBtn" class="btn btn-primary btn-full" style="margin-top:4px">
+        <span id="tts-btnText">🎙️ MP3 생성</span>
+        <div id="tts-spinner" class="btn-spinner hidden"></div>
+      </button>
+
+      <!-- 재생 & 다운로드 -->
+      <div id="tts-playerArea" class="hidden" style="margin-top:14px">
+        <audio id="tts-audio" controls style="width:100%;border-radius:6px;margin-bottom:8px"></audio>
+        <a id="tts-downloadLink" class="btn btn-ghost btn-sm btn-full" download="tts.mp3">
+          ⬇️ MP3 다운로드
+        </a>
+      </div>
     </div>
 
     <div class="section-card empty-guide" id="sc-guide">

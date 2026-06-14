@@ -64,13 +64,13 @@
 
       <!-- 분석 결과 -->
       <div class="modal-section" id="md-analysisSection" style="display:none">
-        <h4 class="modal-sub">영상 분석 결과</h4>
-        <div id="md-analysis" class="analysis-result markdown-body compact"></div>
+        <h4 class="modal-sub">📊 영상 분석 결과</h4>
+        <div id="md-analysis" class="analysis-result" style="max-height:420px;overflow-y:auto"></div>
       </div>
 
       <!-- 대본 -->
       <div class="modal-section" id="md-scriptSection" style="display:none">
-        <h4 class="modal-sub">저장된 대본</h4>
+        <h4 class="modal-sub">✍️ 저장된 대본</h4>
         <pre id="md-script" class="raw-script compact"></pre>
       </div>
     </div>
@@ -87,6 +87,7 @@
       </div>
       <div class="modal-actions">
         <button id="md-scriptBtn" class="btn btn-primary">✍️ 대본 생성</button>
+        <button id="md-exportBtn" class="btn btn-ghost">📄 결과 저장</button>
         <button id="md-deleteBtn" class="btn btn-danger">🗑️ 삭제</button>
         <button id="md-closeBtn" class="btn btn-ghost">닫기</button>
       </div>

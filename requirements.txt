@@ -5,3 +5,4 @@ python-dotenv
 requests
 python-multipart
 urllib3
+google-cloud-texttospeech

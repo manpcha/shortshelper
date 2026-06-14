@@ -58,7 +58,7 @@ const App = (() => {
     saveProjects(getProjects().filter(p => p.id !== id));
   }
   function getModel() {
-    return localStorage.getItem(MODEL_KEY) || 'gemini-2.0-flash';
+    return localStorage.getItem(MODEL_KEY) || 'gemini-3.5-flash';
   }
 
   // ─── HTTP helpers ──────────────────────────────────────
@@ -123,6 +123,20 @@ const App = (() => {
       .replace(/^---$/gm, '<hr>')
       .replace(/\n{2,}/g,'</p><p>')
       .replace(/\n/g,'<br>');
+  }
+
+  // ─── File export helper ────────────────────────────────
+  function exportTextFile(content, filename) {
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast(`"${filename}" 저장 완료`, 'success');
   }
 
   // ─── Date helper ───────────────────────────────────────
@@ -272,12 +286,11 @@ const App = (() => {
 
     const grid = document.getElementById('videoResults');
     grid.innerHTML = '';
+    show('videoResults');
     if (!data.items || !data.items.length) {
       grid.innerHTML = '<p style="color:var(--text-3);padding:20px">조건에 맞는 영상이 없습니다.</p>';
-      grid.style.display = 'block';
       return;
     }
-    grid.style.display = '';
     data.items.forEach(v => {
       const card = document.createElement('div');
       card.className = 'video-card';
@@ -299,7 +312,7 @@ const App = (() => {
           <a href="https://youtube.com/shorts/${esc(v.id)}" target="_blank" rel="noopener"
              class="btn btn-ghost btn-sm" style="flex:1;font-size:11px">▶ 보기</a>
           <button class="btn btn-secondary btn-sm" style="flex:1;font-size:11px"
-            onclick='App.goScript(${JSON.stringify({ name: v.title, category:"기타", features:"", target:"" })})'>✍️ 대본</button>
+            onclick='App.goScript(${JSON.stringify({ name: "", category:"기타", features:"", target:"", videoTitle: v.title })})'>✍️ 대본</button>
         </div>
       `;
       grid.appendChild(card);
@@ -389,6 +402,11 @@ const App = (() => {
     initDropZone();
     document.getElementById('vision-analyzeBtn').addEventListener('click', runVisionAnalysis);
     document.getElementById('vision-saveBtn').addEventListener('click', saveVisionResult);
+    document.getElementById('vision-exportBtn').addEventListener('click', () => {
+      const raw = window._visionRawResult || '';
+      if (!raw) { toast('저장할 분석 결과가 없습니다.', 'error'); return; }
+      exportTextFile(raw, '분석결과.txt');
+    });
     document.getElementById('vision-scriptBtn').addEventListener('click', () => {
       const prefill = extractVisionPrefill();
       sessionStorage.setItem(PREFILL_KEY, JSON.stringify(prefill));
@@ -412,8 +430,8 @@ const App = (() => {
       const data = await post('/api/gemini', { prompt, model: getModel() });
       if (data.error) { toast(data.error, 'error'); }
       else {
-        document.getElementById('ta-result').innerHTML = md2html(data.text);
-        document.getElementById('ta-resultCard').style.display = '';
+        renderAnalysisResult(data.text, 'ta-result');
+        show('ta-resultCard');
         window._taRawResult = data.text;
       }
     } catch { toast('분석 중 오류가 발생했습니다.', 'error'); }
@@ -458,27 +476,29 @@ ${url ? `- **URL:** ${url}` : ''}
   }
 
   function saveTextResult() {
-    const name = document.getElementById('ta-productName').value.trim() || '제품 분석';
-    const cat  = document.getElementById('ta-category').value;
     const raw  = window._taRawResult || '';
     if (!raw) { toast('분석 결과가 없습니다.', 'error'); return; }
     const prefill = extractTextPrefill();
+    const name = prefill.name || document.getElementById('ta-productName').value.trim() || '제품 분석';
+    const cat  = document.getElementById('ta-category').value;
     addProject({
       id: Date.now().toString(), name, category: cat, status: 'draft',
       createdAt: new Date().toISOString(),
       analysisContent: raw,
       formData: prefill,
     });
-    toast('프로젝트에 저장되었습니다.', 'success');
+    toast(`"${name}" 프로젝트에 저장되었습니다.`, 'success');
   }
 
   function extractTextPrefill() {
     const raw = window._taRawResult || '';
+    const category = document.getElementById('ta-category').value;
     return {
-      name:     document.getElementById('ta-productName').value.trim(),
-      category: document.getElementById('ta-category').value,
-      features: extractSection(raw, ['핵심 셀링 포인트', '셀링 포인트', '주요 소재', '핵심 스펙']),
-      target:   extractSection(raw, ['1순위', '타겟 고객']),
+      name:     document.getElementById('ta-productName').value.trim()
+                || simplifyProductName(extractField(raw, ['제품명 및 종류', '제품명'])),
+      category,
+      features: buildFeaturesFromAnalysis(raw),
+      target:   buildTargetFromAnalysis(raw) || buildDefaultTarget(category),
     };
   }
 
@@ -588,8 +608,8 @@ ${url ? `- **URL:** ${url}` : ''}
       const data = await post('/api/gemini-vision', { frames: _videoFrames, prompt, model: getModel() });
       if (data.error) { toast(data.error, 'error'); }
       else {
-        document.getElementById('vision-result').innerHTML = md2html(data.text);
-        document.getElementById('vision-resultCard').style.display = '';
+        renderAnalysisResult(data.text, 'vision-result');
+        show('vision-resultCard');
         window._visionRawResult = data.text;
       }
     } catch { toast('분석 중 오류가 발생했습니다.', 'error'); }
@@ -602,16 +622,18 @@ ${url ? `- **URL:** ${url}` : ''}
 ## 분석 요청 (파일: ${filename})
 
 ### 🔍 제품 식별 및 기본 정보
-- **제품명 및 종류:** (영상에서 보이는 제품이 무엇인지 정확히 파악)
+- **제품명 및 종류:** (영상에서 보이는 제품이 무엇인지 정확히 파악, 한국어로 설명)
 - **주요 소재 / 핵심 스펙:** (보이는 소재, 크기, 특이사항)
 - **예상 가격대 및 원산지:** (제품 외관으로 추정)
+- **영상 속 텍스트 번역 및 활용:** (화면에 보이는 외국어 텍스트가 있다면 원문과 한국어 번역을 제공하고, 각 문구를 한국 쇼핑쇼츠 마케팅 문구로 어떻게 활용할 수 있는지 제안)
+  - 예시 형식: \`원문\` (발음): "한국어 번역" → **마케팅 활용**: "한국 쇼핑쇼츠 멘트 제안"
 
 ### 💡 핵심 셀링 포인트 Top 3
 쇼핑쇼츠에서 강조해야 할 핵심 마케팅 소구점 3가지를 구체적으로 제시하세요.
 
 ### 👥 타겟 고객 분석
-- **1순위:** (이 제품에 가장 적합한 고객층, 나이/상황/직업 포함)
-- **2순위:** (부차적 타겟)
+- **1순위 타겟:** (이 제품에 가장 적합한 고객층, 나이/상황/직업 포함)
+- **2순위 타겟:** (부차적 타겟)
 - **구매 동기 및 구매 상황:**
 
 ### 📊 경쟁력 및 차별화 분석
@@ -632,38 +654,201 @@ ${url ? `- **URL:** ${url}` : ''}
     const raw = window._visionRawResult || '';
     if (!raw) { toast('분석 결과가 없습니다.', 'error'); return; }
     const prefill = extractVisionPrefill();
+    // Use AI-extracted name; never use raw video filename as project name
+    const name = prefill.name || '영상 분석 - ' + new Date().toLocaleDateString('ko-KR');
     addProject({
       id: Date.now().toString(),
-      name: prefill.name || '영상 분석',
+      name,
       category: prefill.category || '기타',
       status: 'draft',
       createdAt: new Date().toISOString(),
       analysisContent: raw,
       formData: prefill,
     });
-    toast('프로젝트에 저장되었습니다.', 'success');
+    toast(`"${name}" 프로젝트에 저장되었습니다.`, 'success');
   }
 
   function extractVisionPrefill() {
     const raw = window._visionRawResult || '';
+    const category = extractCategoryFromText(raw) || '기타';
     return {
-      name:     extractSection(raw, ['제품명 및 종류', '제품명']),
-      category: '기타',
-      features: extractSection(raw, ['주요 소재', '핵심 스펙', '핵심 셀링 포인트']),
-      target:   extractSection(raw, ['1순위', '타겟 고객']),
+      name:       simplifyProductName(extractField(raw, ['제품명 및 종류', '제품명'])),
+      category,
+      features:   buildFeaturesFromAnalysis(raw),
+      target:     buildTargetFromAnalysis(raw) || buildDefaultTarget(category),
+      priceRange: extractField(raw, ['예상 가격대', '가격대', '가격']),
     };
   }
 
-  // Extract first matching line from markdown text
-  function extractSection(text, keys) {
+  function extractCategoryFromText(text) {
+    const cats = ['생활용품','주방용품','인테리어','뷰티','건강','육아','디지털'];
+    for (const c of cats) if (text.includes(c)) return c;
+    return '';
+  }
+
+  // Detect video filenames like "1762228456435_Video3" or "abc_video1"
+  function isFilenameLike(str) {
+    if (!str) return false;
+    return /^\d{8,}/.test(str) || /^\d+[_-]\w/.test(str) || /[Vv]ideo\d+$/i.test(str);
+  }
+
+  // Default target by category when AI extraction fails
+  function buildDefaultTarget(category) {
+    const map = {
+      '생활용품': '20-40대 주부 및 1인 가구',
+      '주방용품': '요리를 즐기는 20-40대 주부',
+      '인테리어': '인테리어에 관심 있는 20-30대 직장인',
+      '뷰티':     '피부 관리에 관심 있는 20-30대 여성',
+      '건강':     '건강 관리에 관심 있는 30-50대',
+      '육아':     '영유아 자녀를 둔 30-40대 부모',
+      '디지털':   'IT 기기에 관심 있는 20-40대',
+    };
+    return map[category] || '20-40대 온라인 쇼핑 이용자';
+  }
+
+  // ─── Analysis result helpers ───────────────────────────
+  function escRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+  // Shorten overly long product names: remove parentheticals, keep last 3 words if 5+ words
+  function simplifyProductName(str) {
+    if (!str) return str;
+    // Strip markdown bold
+    let s = str.replace(/\*+/g, '').trim();
+    // Handle slash-separated names: simplify each part
+    if (s.includes('/')) {
+      return s.split('/').map(p => _shortenNamePart(p.trim())).filter(Boolean).join(' / ');
+    }
+    return _shortenNamePart(s);
+  }
+
+  function _shortenNamePart(s) {
+    // Remove parenthetical explanations e.g. "(싱크대 다용도 배수 바스켓)"
+    s = s.replace(/[（(][^)）]{2,}[)）]/g, '').trim();
+    s = s.replace(/[,、·]+$/, '').trim();
+    const words = s.split(/\s+/).filter(Boolean);
+    // 5+ words: take the last 3 as the core product name
+    if (words.length >= 5) return words.slice(-3).join(' ');
+    return s;
+  }
+
+  // Robust field extractor — handles **key:** value, plain key: value, AND markdown table | key | value |
+  function extractField(text, keys) {
     for (const key of keys) {
-      const re = new RegExp(`\\*\\*${key}[^*]*\\*\\*[:\\s]*([^\\n]+)`, 'i');
-      const m  = text.match(re);
-      if (m && m[1]) {
-        return m[1].replace(/^\*+|\*+$/g,'').replace(/^[-:\s]+/,'').trim();
+      const k = escRegex(key);
+      const patterns = [
+        // markdown table: | **key** | **value** | (bold inside cells) OR | key | value |
+        new RegExp(`[|]\\s*[*]{0,2}\\s*${k}\\s*[*]{0,2}\\s*[|]\\s*[*]{0,2}\\s*([^|*\\n]+?)\\s*[*]{0,2}\\s*[|]`, 'i'),
+        // **key:** value — colon INSIDE bold closing (most common Gemini format: **제품명:** 값)
+        new RegExp(`\\*\\*${k}[^*]*[：:]\\*\\*\\s*([^\\n]+)`, 'i'),
+        // **key** : value — colon OUTSIDE bold
+        new RegExp(`\\*\\*${k}[^*]*\\*\\*\\s*[：:]\\s*([^\\n]+)`, 'i'),
+        // plain: - key: value  (also handles "1순위 타겟: value" where key has trailing words)
+        new RegExp(`(?:^|\\n)[\\-*\\s]*${k}[^：:\\n]*[：:]\\s*([^\\n]+)`, 'im'),
+      ];
+      for (const re of patterns) {
+        const m = text.match(re);
+        if (m && m[1]) {
+          const val = m[1].replace(/\*+/g, '').replace(/^[-：:\s]+/, '').trim();
+          if (val && val.length > 1 && !val.startsWith('(없음') && !val.startsWith('없음')) return val;
+        }
       }
     }
     return '';
+  }
+
+  // Legacy alias (used in script-from-project extraction)
+  function extractSection(text, keys) { return extractField(text, keys); }
+
+  // Parse ### / ## sections from Gemini markdown response
+  function parseSections(text) {
+    const re = /^#{2,3}\s+(.+)$/gm;
+    const matches = [...text.matchAll(re)];
+    if (!matches.length) return [{ title: '분석 결과', body: text }];
+    const sections = [];
+    for (let i = 0; i < matches.length; i++) {
+      const title = matches[i][1].trim();
+      const start = matches[i].index + matches[i][0].length;
+      const end   = i + 1 < matches.length ? matches[i + 1].index : text.length;
+      const body  = text.slice(start, end).trim();
+      if (body) sections.push({ title, body });
+    }
+    return sections;
+  }
+
+  // Extract FULL text of a section by keyword (for multi-line fields like features)
+  function extractSectionContent(text, titleKeywords, maxLines = 6) {
+    const sections = parseSections(text);
+    for (const kw of titleKeywords) {
+      const sec = sections.find(s => s.title.includes(kw));
+      if (!sec || !sec.body.trim()) continue;
+      const lines = sec.body.split('\n')
+        .map(l => l
+          .replace(/\*\*([^*]+?)\*\*/g, '$1')   // remove bold
+          .replace(/\*([^*]+?)\*/g, '$1')         // remove italic
+          .replace(/^\s*[-*•]\s*/, '')             // remove bullet
+          .trim()
+        )
+        .filter(l => l.length > 2 && !l.startsWith('#') && !l.startsWith('('));
+      if (lines.length > 0) return lines.slice(0, maxLines).join('\n');
+    }
+    return '';
+  }
+
+  // Build comprehensive features string from analysis
+  function buildFeaturesFromAnalysis(text) {
+    // Priority 1: 핵심 셀링 포인트 / 소구점 section
+    const selling = extractSectionContent(text, ['핵심 셀링 포인트', '셀링 포인트', '소구점'], 5);
+    if (selling) return selling;
+    // Priority 2: 경쟁력 분석 section
+    const comp = extractSectionContent(text, ['경쟁력', '차별화'], 4);
+    if (comp) return comp;
+    // Priority 3: single field extraction
+    return extractField(text, ['주요 소재', '핵심 스펙', '핵심 소구점']);
+  }
+
+  // Build clean target string from analysis
+  function buildTargetFromAnalysis(text) {
+    if (!text) return '';
+    // Try multiple "1순위" key variants (Gemini uses different formats)
+    const t1 = extractField(text, ['1순위 타겟 고객', '1순위 타겟', '1순위', '주요 타겟', '핵심 타겟']);
+    if (t1) return t1;
+    // Fallback: first 2 lines of target section
+    const sec = extractSectionContent(text, ['타겟 고객', '타겟 분석', '고객 분석', '타겟'], 2);
+    if (sec) return sec.split('\n').slice(0, 1).join('').trim();
+    return '';
+  }
+
+  // Render structured analysis: summary bar + section cards
+  function renderAnalysisResult(text, containerId) {
+    const el = document.getElementById(containerId);
+    if (!el || !text) return;
+
+    const productName = simplifyProductName(extractField(text, ['제품명 및 종류', '제품명']));
+    const priceRange  = extractField(text, ['예상 가격대', '가격대', '가격']);
+    const target1     = extractField(text, ['1순위']);
+    const spec        = extractField(text, ['핵심 스펙', '주요 소재']);
+
+    let html = '';
+
+    // ─ Summary bar
+    if (productName || priceRange || target1) {
+      html += '<div class="analysis-summary">';
+      if (productName) html += `<div class="sum-row"><span class="sum-label">🏷️ 제품명</span><span class="sum-val">${esc(productName)}</span></div>`;
+      if (priceRange)  html += `<div class="sum-row"><span class="sum-label">💰 가격대</span><span class="sum-val">${esc(priceRange)}</span></div>`;
+      if (target1)     html += `<div class="sum-row"><span class="sum-label">👥 주요 타겟</span><span class="sum-val">${esc(target1)}</span></div>`;
+      if (spec)        html += `<div class="sum-row"><span class="sum-label">⚙️ 핵심 스펙</span><span class="sum-val">${esc(spec)}</span></div>`;
+      html += '</div>';
+    }
+
+    // ─ Section cards
+    parseSections(text).forEach(s => {
+      html += `<div class="analysis-sec">
+        <div class="analysis-sec-title">${esc(s.title)}</div>
+        <div class="analysis-sec-body">${md2html(s.body)}</div>
+      </div>`;
+    });
+
+    el.innerHTML = html || md2html(text);
   }
 
   // ═══════════════════════════════════════════════════════
@@ -676,13 +861,43 @@ ${url ? `- **URL:** ${url}` : ''}
       try {
         const p = JSON.parse(raw);
         sessionStorage.removeItem(PREFILL_KEY);
-        if (p.name)     document.getElementById('sc-productName').value = p.name;
+
+        let filled = [];
+
+        if (p.name) {
+          document.getElementById('sc-productName').value = p.name;
+          filled.push('제품명');
+        }
         if (p.category) {
           const sel = document.getElementById('sc-category');
-          for (const o of sel.options) if (o.value === p.category) { o.selected = true; break; }
+          for (const o of sel.options) {
+            if (o.value === p.category) { o.selected = true; break; }
+          }
         }
-        if (p.features) document.getElementById('sc-features').value = p.features;
-        if (p.target)   document.getElementById('sc-target').value   = p.target;
+        if (p.features) {
+          document.getElementById('sc-features').value = p.features;
+          filled.push('주요 특징');
+        }
+        if (p.target) {
+          document.getElementById('sc-target').value = p.target;
+          filled.push('타겟 고객');
+        }
+
+        if (filled.length) {
+          // 시각적 하이라이트
+          ['sc-productName','sc-features','sc-target'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el && el.value) {
+              el.style.borderColor = 'var(--accent)';
+              el.style.background  = 'rgba(124,58,237,.06)';
+              setTimeout(() => {
+                el.style.borderColor = '';
+                el.style.background  = '';
+              }, 2500);
+            }
+          });
+          toast(`분석 결과에서 자동 입력: ${filled.join(', ')}`, 'success');
+        }
       } catch {}
     }
 
@@ -692,6 +907,7 @@ ${url ? `- **URL:** ${url}` : ''}
     });
     document.getElementById('sc-saveBtn').addEventListener('click', saveScript);
     document.getElementById('sc-regenBtn').addEventListener('click', generateScript);
+    initTTSListeners();
   }
 
   async function generateScript() {
@@ -716,12 +932,195 @@ ${url ? `- **URL:** ${url}` : ''}
       else {
         window._scriptRaw = data.text;
         renderScript(data.text, duration);
-        document.getElementById('sc-resultCard').style.display = '';
+        show('sc-resultCard');
+        // TTS 카드 표시 및 텍스트 채우기
+        initTTSCard(data.text);
       }
     } catch { toast('대본 생성 중 오류가 발생했습니다.', 'error'); }
     finally { setBtnLoading('sc-generateBtn', 'sc-btnText', 'sc-spinner', false, '🚀 대본 생성'); }
   }
 
+  // ═══════════════════════════════════════════════════════
+  // TTS — Text-to-Speech
+  // ═══════════════════════════════════════════════════════
+
+  function initTTSCard(scriptText) {
+    // Fill textarea with plain script text (strip markdown)
+    const plain = (scriptText || '')
+      .replace(/#{1,3}\s*/g, '')
+      .replace(/\*\*/g, '')
+      .replace(/^\s*[-*]\s+/gm, '')
+      .trim();
+    const ta = document.getElementById('tts-text');
+    if (ta && !ta.value) ta.value = plain;
+    show('tts-card');
+    loadTTSPresets();
+  }
+
+  async function loadTTSVoices() {
+    const provider = document.getElementById('tts-provider').value;
+    const btn = document.getElementById('tts-loadVoicesBtn');
+    const sel = document.getElementById('tts-voice');
+    btn.disabled = true; btn.textContent = '로딩 중...';
+    try {
+      const data = await get('/api/tts/voices', { provider });
+      if (data.error) { toast(data.error, 'error'); return; }
+      sel.innerHTML = '<option value="">-- 음성 선택 --</option>';
+      data.forEach(v => {
+        const o = document.createElement('option');
+        o.value = v.id;
+        o.textContent = v.name + (v.labels?.gender ? ` (${v.labels.gender})` : '');
+        sel.appendChild(o);
+      });
+      toast(`${data.length}개 음성 로드됨`, 'success');
+    } catch { toast('음성 목록 로드 실패', 'error'); }
+    finally { btn.disabled = false; btn.textContent = '📋 음성 목록 불러오기'; }
+  }
+
+  async function loadTTSPresets() {
+    try {
+      const presets = await get('/api/tts/presets');
+      const sel = document.getElementById('tts-presetSelect');
+      sel.innerHTML = '<option value="">-- 프리셋 선택 --</option>';
+      presets.forEach(p => {
+        const o = document.createElement('option');
+        o.value = p.id;
+        o.textContent = `${p.name} (${p.provider})`;
+        o.dataset.preset = JSON.stringify(p);
+        sel.appendChild(o);
+      });
+    } catch { /* silent */ }
+  }
+
+  function applyTTSPreset(preset) {
+    const p = typeof preset === 'string' ? JSON.parse(preset) : preset;
+    if (!p) return;
+    const setV = (id, val) => { const el = document.getElementById(id); if (el && val !== undefined) el.value = val; };
+    const setC = (id, val) => { const el = document.getElementById(id); if (el) el.checked = !!val; };
+    setV('tts-provider', p.provider);
+    toggleTTSProviderOptions(p.provider);
+    setV('tts-voice', p.voice_id);
+    setV('tts-rate', p.speaking_rate ?? 1.0);
+    setV('tts-pitch', p.pitch ?? 0.0);
+    setV('tts-stability', p.stability ?? 0.5);
+    setV('tts-similarity', p.similarity_boost ?? 0.75);
+    setV('tts-style', p.style ?? 0.0);
+    setC('tts-speakerBoost', p.speaker_boost ?? true);
+    updateTTSRangeLabels();
+  }
+
+  async function saveTTSPreset() {
+    const pname = document.getElementById('tts-presetName').value.trim();
+    if (!pname) { toast('프리셋 이름을 입력하세요.', 'error'); return; }
+    const body = {
+      name:             pname,
+      provider:         document.getElementById('tts-provider').value,
+      voice_id:         document.getElementById('tts-voice').value,
+      voice_name:       document.getElementById('tts-voice').selectedOptions[0]?.textContent || '',
+      speaking_rate:    parseFloat(document.getElementById('tts-rate').value),
+      pitch:            parseFloat(document.getElementById('tts-pitch').value),
+      stability:        parseFloat(document.getElementById('tts-stability').value),
+      similarity_boost: parseFloat(document.getElementById('tts-similarity').value),
+      style:            parseFloat(document.getElementById('tts-style').value),
+      speaker_boost:    document.getElementById('tts-speakerBoost').checked,
+    };
+    try {
+      await post('/api/tts/presets/save', body);
+      toast(`"${pname}" 프리셋 저장됨`, 'success');
+      document.getElementById('tts-presetName').value = '';
+      loadTTSPresets();
+    } catch { toast('프리셋 저장 실패', 'error'); }
+  }
+
+  async function deleteTTSPreset() {
+    const sel = document.getElementById('tts-presetSelect');
+    const id  = sel.value;
+    if (!id) { toast('삭제할 프리셋을 선택하세요.', 'error'); return; }
+    if (!confirm('이 프리셋을 삭제하시겠습니까?')) return;
+    try {
+      await fetch(`/api/tts/presets/${id}`, { method: 'DELETE' });
+      toast('프리셋 삭제됨', 'success');
+      loadTTSPresets();
+    } catch { toast('삭제 실패', 'error'); }
+  }
+
+  async function generateTTS() {
+    const text = document.getElementById('tts-text').value.trim();
+    if (!text) { toast('변환할 텍스트를 입력하세요.', 'error'); return; }
+    setBtnLoading('tts-generateBtn', 'tts-btnText', 'tts-spinner', true);
+    hide('tts-playerArea');
+    const body = {
+      text,
+      provider:         document.getElementById('tts-provider').value,
+      voice_id:         document.getElementById('tts-voice').value,
+      speaking_rate:    parseFloat(document.getElementById('tts-rate').value),
+      pitch:            parseFloat(document.getElementById('tts-pitch').value),
+      stability:        parseFloat(document.getElementById('tts-stability').value),
+      similarity_boost: parseFloat(document.getElementById('tts-similarity').value),
+      style:            parseFloat(document.getElementById('tts-style').value),
+      speaker_boost:    document.getElementById('tts-speakerBoost').checked,
+    };
+    try {
+      const data = await post('/api/tts', body);
+      if (data.error) { toast(data.error, 'error'); return; }
+      const audio = document.getElementById('tts-audio');
+      const dl    = document.getElementById('tts-downloadLink');
+      audio.src = data.url + '?t=' + Date.now();
+      dl.href   = data.url;
+      dl.download = data.file;
+      show('tts-playerArea');
+      audio.play().catch(() => {});
+      toast('MP3 생성 완료!', 'success');
+    } catch { toast('TTS 생성 중 오류 발생', 'error'); }
+    finally { setBtnLoading('tts-generateBtn', 'tts-btnText', 'tts-spinner', false, '🎙️ MP3 생성'); }
+  }
+
+  function toggleTTSProviderOptions(provider) {
+    if (provider === 'google') {
+      document.getElementById('tts-elOptions').classList.add('hidden');
+      document.getElementById('tts-googleOptions').classList.remove('hidden');
+    } else {
+      document.getElementById('tts-elOptions').classList.remove('hidden');
+      document.getElementById('tts-googleOptions').classList.add('hidden');
+    }
+  }
+
+  function updateTTSRangeLabels() {
+    const map = [
+      ['tts-rate',       'tts-rateVal',       v => v + 'x'],
+      ['tts-stability',  'tts-stabilityVal',  v => parseFloat(v).toFixed(2)],
+      ['tts-similarity', 'tts-similarityVal', v => parseFloat(v).toFixed(2)],
+      ['tts-style',      'tts-styleVal',      v => parseFloat(v).toFixed(2)],
+      ['tts-pitch',      'tts-pitchVal',      v => parseFloat(v).toFixed(1)],
+    ];
+    map.forEach(([inputId, labelId, fmt]) => {
+      const inp = document.getElementById(inputId);
+      const lbl = document.getElementById(labelId);
+      if (inp && lbl) lbl.textContent = fmt(inp.value);
+    });
+  }
+
+  function initTTSListeners() {
+    const rangeIds = ['tts-rate','tts-stability','tts-similarity','tts-style','tts-pitch'];
+    rangeIds.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('input', updateTTSRangeLabels);
+    });
+    document.getElementById('tts-provider').addEventListener('change', e => {
+      toggleTTSProviderOptions(e.target.value);
+    });
+    document.getElementById('tts-loadVoicesBtn').addEventListener('click', loadTTSVoices);
+    document.getElementById('tts-savePresetBtn').addEventListener('click', saveTTSPreset);
+    document.getElementById('tts-deletePresetBtn').addEventListener('click', deleteTTSPreset);
+    document.getElementById('tts-generateBtn').addEventListener('click', generateTTS);
+    document.getElementById('tts-presetSelect').addEventListener('change', e => {
+      const opt = e.target.selectedOptions[0];
+      if (opt && opt.dataset.preset) applyTTSPreset(opt.dataset.preset);
+    });
+    updateTTSRangeLabels();
+  }
+
+  // ═══════════════════════════════════════════════════════
   function buildScriptPrompt(name, category, features, target, duration, tone, extra) {
     const toneMap = {
       friendly:     '친근하고 편안한',
@@ -836,6 +1235,13 @@ ${secs.map(s => `**[${s}]**\n(${s} 내용을 여기에 작성)`).join('\n\n')}
     document.getElementById('projectModal').addEventListener('click', e => {
       if (e.target === e.currentTarget) closeModal();
     });
+    document.getElementById('md-exportBtn').addEventListener('click', () => {
+      if (!_openProjectId) return;
+      const p = getProjects().find(x => x.id === _openProjectId);
+      if (!p || !p.analysisContent) { toast('저장할 분석 결과가 없습니다.', 'error'); return; }
+      const fname = (p.name ? p.name.replace(/[\\/:*?"<>|]/g, '_') : '분석결과') + '.txt';
+      exportTextFile(p.analysisContent, fname);
+    });
     document.getElementById('md-deleteBtn').addEventListener('click', () => {
       if (!_openProjectId) return;
       if (!confirm('이 프로젝트를 삭제하시겠습니까?')) return;
@@ -848,11 +1254,23 @@ ${secs.map(s => `**[${s}]**\n(${s} 내용을 여기에 작성)`).join('\n\n')}
       if (!_openProjectId) return;
       const p = getProjects().find(x => x.id === _openProjectId);
       if (!p) return;
+      const analysis = p.analysisContent || '';
+      const category = p.formData?.category || p.category || '';
+
+      const aiName =
+        simplifyProductName(extractField(analysis, ['제품명 및 종류','제품명'])) ||
+        (!isFilenameLike(p.formData?.name) ? p.formData?.name : '') ||
+        (!isFilenameLike(p.name) ? p.name : '');
+
+      const aiTarget =
+        buildTargetFromAnalysis(analysis) ||   // always re-extract from raw content first
+        buildDefaultTarget(category);
+
       const prefill = {
-        name:     p.formData?.name || p.name || '',
-        category: p.formData?.category || p.category || '',
-        features: p.formData?.features || extractSection(p.analysisContent || '', ['핵심 셀링 포인트','주요 소재','핵심 스펙']),
-        target:   p.formData?.target   || extractSection(p.analysisContent || '', ['1순위','타겟 고객']),
+        name:     aiName || '',
+        category,
+        features: p.formData?.features || buildFeaturesFromAnalysis(analysis),
+        target:   aiTarget,
       };
       sessionStorage.setItem(PREFILL_KEY, JSON.stringify(prefill));
       window.location.href = '/script';
@@ -879,12 +1297,19 @@ ${secs.map(s => `**[${s}]**\n(${s} 내용을 여기에 작성)`).join('\n\n')}
 
     const tbody = document.getElementById('projectsTbody');
     if (!list.length) {
-      tbody.innerHTML = '<tr><td colspan="5" class="empty-row">프로젝트가 없습니다.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" class="empty-row">프로젝트가 없습니다.</td></tr>';
       return;
     }
-    tbody.innerHTML = list.map(p => `
+    tbody.innerHTML = list.map(p => {
+      const badges = [];
+      if (p.analysisContent) badges.push('<span class="badge badge-active" style="font-size:10px;padding:1px 6px">📊 분석</span>');
+      if (p.scriptContent)   badges.push('<span class="badge badge-completed" style="font-size:10px;padding:1px 6px">✍️ 대본</span>');
+      return `
       <tr style="cursor:pointer" onclick="App.openProject('${esc(p.id)}')">
-        <td><strong>${esc(p.name||'(제목 없음)')}</strong></td>
+        <td>
+          <div><strong>${esc(p.name||'(제목 없음)')}</strong></div>
+          ${badges.length ? `<div style="display:flex;gap:4px;margin-top:4px">${badges.join('')}</div>` : ''}
+        </td>
         <td>${esc(p.category||'-')}</td>
         <td>${fmtDate(p.createdAt)}</td>
         <td>${statusBadge(p.status||'draft')}</td>
@@ -895,8 +1320,8 @@ ${secs.map(s => `**[${s}]**\n(${s} 내용을 여기에 작성)`).join('\n\n')}
             <button class="btn btn-danger btn-sm" onclick="App.deleteFromTable('${esc(p.id)}')">삭제</button>
           </div>
         </td>
-      </tr>
-    `).join('');
+      </tr>`;
+    }).join('');
   }
 
   function openProject(id) {
@@ -905,27 +1330,36 @@ ${secs.map(s => `**[${s}]**\n(${s} 내용을 여기에 작성)`).join('\n\n')}
     _openProjectId = id;
 
     document.getElementById('modal-title').textContent   = p.name || '(제목 없음)';
-    document.getElementById('md-productName').textContent = p.formData?.name || p.name || '-';
+    document.getElementById('md-productName').textContent = p.formData?.name || simplifyProductName(extractField(p.analysisContent||'', ['제품명 및 종류','제품명'])) || (!isFilenameLike(p.name) ? p.name : '') || '-';
     document.getElementById('md-category').textContent    = p.category || '-';
-    document.getElementById('md-target').textContent      = p.formData?.target || extractSection(p.analysisContent||'',['1순위','타겟 고객']) || '-';
-    document.getElementById('md-features').textContent    = p.formData?.features || '-';
+    document.getElementById('md-target').textContent      = p.formData?.target || extractField(p.analysisContent||'',['1순위','타겟 고객','주요 타겟']) || '-';
+    document.getElementById('md-features').textContent    = p.formData?.features || extractField(p.analysisContent||'',['핵심 셀링 포인트','소구점','핵심 스펙','주요 소재']) || '-';
     document.getElementById('md-status').innerHTML        = statusBadge(p.status||'draft');
     document.getElementById('md-date').textContent        = fmtDate(p.createdAt);
     document.getElementById('md-statusSelect').value      = p.status || 'draft';
 
     const aSection = document.getElementById('md-analysisSection');
     if (p.analysisContent) {
-      aSection.style.display = '';
-      document.getElementById('md-analysis').innerHTML = md2html(p.analysisContent);
-    } else { aSection.style.display = 'none'; }
+      aSection.style.removeProperty('display');
+      aSection.classList.remove('hidden');
+      renderAnalysisResult(p.analysisContent, 'md-analysis');
+    } else {
+      aSection.style.display = 'none';
+    }
 
     const sSection = document.getElementById('md-scriptSection');
     if (p.scriptContent) {
-      sSection.style.display = '';
+      sSection.style.removeProperty('display');
+      sSection.classList.remove('hidden');
       document.getElementById('md-script').textContent = p.scriptContent;
-    } else { sSection.style.display = 'none'; }
+    } else {
+      sSection.style.display = 'none';
+    }
 
-    document.getElementById('projectModal').style.display = 'flex';
+    const modal = document.getElementById('projectModal');
+    modal.style.removeProperty('display');
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
   }
 
   function closeModal() {
@@ -936,11 +1370,24 @@ ${secs.map(s => `**[${s}]**\n(${s} 내용을 여기에 작성)`).join('\n\n')}
   function goScriptFromProject(id) {
     const p = getProjects().find(x => x.id === id);
     if (!p) return;
+    const analysis = p.analysisContent || '';
+    const category = p.formData?.category || p.category || '';
+
+    // AI extraction first; reject filename-like fallbacks
+    const aiName =
+      simplifyProductName(extractField(analysis, ['제품명 및 종류','제품명'])) ||
+      (!isFilenameLike(p.formData?.name) ? p.formData?.name : '') ||
+      (!isFilenameLike(p.name) ? p.name : '');
+
+    const aiTarget =
+      buildTargetFromAnalysis(analysis) ||   // always re-extract from raw content first
+      buildDefaultTarget(category);
+
     const prefill = {
-      name:     p.formData?.name || p.name || '',
-      category: p.formData?.category || p.category || '',
-      features: p.formData?.features || extractSection(p.analysisContent||'',['핵심 셀링 포인트','주요 소재','핵심 스펙']),
-      target:   p.formData?.target   || extractSection(p.analysisContent||'',['1순위','타겟 고객']),
+      name:     aiName || '',
+      category,
+      features: p.formData?.features || buildFeaturesFromAnalysis(analysis),
+      target:   aiTarget,
     };
     sessionStorage.setItem(PREFILL_KEY, JSON.stringify(prefill));
     window.location.href = '/script';
@@ -1046,8 +1493,17 @@ ${secs.map(s => `**[${s}]**\n(${s} 내용을 여기에 작성)`).join('\n\n')}
   }
 
   // ─── UI utilities ──────────────────────────────────────
-  function show(id) { document.getElementById(id)?.classList.remove('hidden'); }
-  function hide(id) { document.getElementById(id)?.classList.add('hidden'); }
+  function show(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.remove('hidden');
+    el.style.removeProperty('display'); // inline style="display:none" 도 제거
+  }
+  function hide(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.add('hidden');
+  }
 
   function setBtnLoading(btnId, textId, spinnerId, loading, resetText) {
     const btn     = document.getElementById(btnId);
