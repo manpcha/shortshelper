@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}ShortsHelper{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body data-page="{{ page }}">
+
+  <!-- Mobile overlay -->
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <a href="/" class="sidebar-logo">
+        <span class="logo-icon">⚡</span>
+        <span class="logo-text">ShortsHelper</span>
+      </a>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a href="/"          class="nav-item {% if page=='dashboard' %}active{% endif %}">
+        <span class="nav-icon">📊</span><span>대시보드</span>
+      </a>
+      <a href="/explore"   class="nav-item {% if page=='explore' %}active{% endif %}">
+        <span class="nav-icon">🔍</span><span>소재탐색</span>
+      </a>
+      <a href="/analysis"  class="nav-item {% if page=='analysis' %}active{% endif %}">
+        <span class="nav-icon">🎬</span><span>제품분석</span>
+      </a>
+      <a href="/script"    class="nav-item {% if page=='script' %}active{% endif %}">
+        <span class="nav-icon">✍️</span><span>대본생성</span>
+      </a>
+      <a href="/projects"  class="nav-item {% if page=='projects' %}active{% endif %}">
+        <span class="nav-icon">📁</span><span>프로젝트 관리</span>
+      </a>
+      <a href="/settings"  class="nav-item {% if page=='settings' %}active{% endif %}">
+        <span class="nav-icon">⚙️</span><span>설정</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <span class="version-badge">v2.0 FastAPI</span>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="layout-main">
+    <header class="topbar">
+      <button class="menu-btn" id="menuBtn" aria-label="메뉴">
+        <span></span><span></span><span></span>
+      </button>
+      <h1 class="topbar-title">{% block topbar_title %}ShortsHelper{% endblock %}</h1>
+      <div class="topbar-right">
+        <div id="apiStatusDot" class="api-dot" title="API 연결 상태"></div>
+      </div>
+    </header>
+
+    <main class="page-content">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  <!-- Toast -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

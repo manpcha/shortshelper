@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}소재탐색 — ShortsHelper{% endblock %}
+{% block topbar_title %}소재탐색{% endblock %}
+
+{% block content %}
+<!-- YouTube 검색 섹션 -->
+<div class="section-card">
+  <h3 class="section-title">🔍 YouTube 쇼츠 검색</h3>
+  <p class="section-sub">쇼츠 영상(1분 이하) · 댓글 30개 이상 필터 자동 적용</p>
+
+  <div class="search-bar-row">
+    <input type="text" id="searchQuery" class="form-input flex1"
+           placeholder="검색어 입력 (예: 에어프라이어 라이너)" />
+    <button id="searchBtn" class="btn btn-primary">검색</button>
+  </div>
+
+  <!-- 기간 필터 -->
+  <div class="period-chips" id="periodChips">
+    <button class="chip active" data-val="오늘">오늘</button>
+    <button class="chip" data-val="7일">7일</button>
+    <button class="chip" data-val="30일">30일</button>
+    <button class="chip" data-val="1년">1년</button>
+  </div>
+
+  <!-- 검색 통계 -->
+  <div id="searchStats" class="search-stats hidden"></div>
+
+  <!-- 로딩 -->
+  <div id="searchSpinner" class="spinner-wrap hidden"><div class="spinner"></div></div>
+
+  <!-- 결과 -->
+  <div id="videoResults" class="video-grid"></div>
+</div>
+
+<!-- 쇼핑 키워드 트렌드 섹션 -->
+<div class="section-card">
+  <div class="section-header-row">
+    <div>
+      <h3 class="section-title">📈 쇼핑 키워드 트렌드</h3>
+      <p class="section-sub" id="trendSourceBadge"></p>
+    </div>
+    <button id="trendRefreshBtn" class="btn btn-ghost btn-sm">새로고침</button>
+  </div>
+
+  <!-- 트렌드 필터 -->
+  <div class="trend-filters">
+    <div class="filter-group">
+      <label class="filter-label">카테고리</label>
+      <div class="chip-group" id="catChips">
+        <button class="chip active" data-val="전체">전체</button>
+        <button class="chip" data-val="생활용품">생활용품</button>
+        <button class="chip" data-val="주방용품">주방용품</button>
+        <button class="chip" data-val="인테리어">인테리어</button>
+        <button class="chip" data-val="뷰티">뷰티</button>
+        <button class="chip" data-val="건강">건강</button>
+        <button class="chip" data-val="육아">육아</button>
+        <button class="chip" data-val="디지털">디지털</button>
+      </div>
+    </div>
+    <div class="filter-group">
+      <label class="filter-label">기간</label>
+      <div class="chip-group" id="trendPeriodChips">
+        <button class="chip active" data-val="today">오늘</button>
+        <button class="chip" data-val="7days">7일</button>
+        <button class="chip" data-val="30days">30일</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 트렌드 로딩 -->
+  <div id="trendSpinner" class="spinner-wrap hidden"><div class="spinner"></div></div>
+
+  <!-- 트렌드 테이블 -->
+  <div class="table-wrap" id="trendTableWrap">
+    <table class="data-table trend-table">
+      <thead>
+        <tr>
+          <th style="width:50px">순위</th>
+          <th>키워드</th>
+          <th>카테고리</th>
+          <th>트렌드 점수</th>
+          <th>상승률</th>
+          <th>추천 액션</th>
+          <th style="width:180px">바로가기</th>
+        </tr>
+      </thead>
+      <tbody id="trendTbody">
+        <tr><td colspan="7" class="empty-row">데이터 로딩 중...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

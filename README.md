@@ -1,36 +1,75 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ShortsHelper v2.0
 
-## Getting Started
+쇼핑쇼츠 기획 및 대본 작성 자동화 플랫폼 (FastAPI 기반)
 
-First, run the development server:
+## 기술 스택
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **백엔드**: FastAPI + Python
+- **프론트엔드**: HTML + CSS + Vanilla JavaScript
+- **템플릿**: Jinja2
+- **AI**: Gemini API (텍스트 + Vision)
+- **데이터**: YouTube Data API v3, Naver DataLab API
+
+## 빠른 시작
+
+### Windows
+
+```bat
+localstart.bat
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 수동 실행
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+python -m venv venv
+venv\Scripts\activate          # Windows
+# source venv/bin/activate      # Linux/Mac
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+pip install -r requirements.txt
+uvicorn app.main:app --host 0.0.0.0 --port 8101 --reload
+```
 
-## Learn More
+접속: http://localhost:8101
 
-To learn more about Next.js, take a look at the following resources:
+## API 키 설정
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+`.env` 파일에 키를 입력하거나 웹 설정 화면(/settings)에서 입력하세요.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```env
+GEMINI_API_KEY=your_key
+YOUTUBE_API_KEY=your_key
+NAVER_CLIENT_ID=your_id
+NAVER_CLIENT_SECRET=your_secret
+```
 
-## Deploy on Vercel
+> ⚠️ `.env` 파일은 절대 GitHub에 커밋하지 마세요.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 주요 기능
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| 메뉴 | 기능 |
+|------|------|
+| 대시보드 | KPI 요약, 최근 프로젝트 |
+| 소재탐색 | YouTube 쇼츠 검색, 키워드 트렌드 |
+| 제품분석 | 텍스트 분석 + 영상 초정밀 분석 (Gemini Vision) |
+| 대본생성 | AI 쇼핑쇼츠 대본 자동 생성 |
+| 프로젝트 관리 | localStorage 기반 프로젝트 CRUD |
+| 설정 | API 키 관리 |
+
+## 프로젝트 구조
+
+```
+shortshelper/
+├─ .env                    # API 키 (비공개)
+├─ requirements.txt
+├─ localstart.bat
+├─ app/
+│  ├─ main.py              # FastAPI 앱
+│  └─ services/
+│     ├─ gemini_service.py
+│     ├─ youtube_service.py
+│     ├─ naver_service.py
+│     ├─ trend_service.py
+│     └─ env_manager.py
+├─ templates/              # Jinja2 HTML 템플릿
+└─ static/                 # CSS + JS
+```

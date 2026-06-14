@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}제품분석 — ShortsHelper{% endblock %}
+{% block topbar_title %}제품분석{% endblock %}
+
+{% block content %}
+<!-- 탭 -->
+<div class="tab-bar">
+  <button class="tab-btn active" data-tab="text">📝 텍스트 분석</button>
+  <button class="tab-btn" data-tab="vision">🎬 영상 초정밀 분석</button>
+</div>
+
+<!-- ─── 탭: 텍스트 분석 ─── -->
+<div class="tab-panel active" id="tab-text">
+  <div class="two-col-layout">
+    <div class="col-left">
+      <div class="section-card">
+        <h3 class="section-title">제품 정보 입력</h3>
+        <div class="form-group">
+          <label class="form-label">제품명 *</label>
+          <input type="text" id="ta-productName" class="form-input"
+                 placeholder="예: 에어프라이어 전용 라이너" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">카테고리</label>
+          <select id="ta-category" class="form-select">
+            <option>생활용품</option><option>주방용품</option><option>인테리어</option>
+            <option>뷰티</option><option>건강</option><option>육아</option>
+            <option>디지털</option><option>기타</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">제품 설명 / 특징</label>
+          <textarea id="ta-description" class="form-textarea" rows="4"
+                    placeholder="제품의 주요 특징, 소재, 가격대 등을 입력하세요."></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">제품 URL (선택)</label>
+          <input type="url" id="ta-url" class="form-input"
+                 placeholder="https://..." />
+        </div>
+        <button id="ta-analyzeBtn" class="btn btn-primary btn-full">
+          <span id="ta-btnText">🔍 AI 분석 시작</span>
+          <div id="ta-spinner" class="btn-spinner hidden"></div>
+        </button>
+      </div>
+    </div>
+
+    <div class="col-right">
+      <div class="section-card result-card" id="ta-resultCard" style="display:none">
+        <div class="result-header">
+          <h3 class="section-title">📊 분석 결과</h3>
+          <div class="result-actions">
+            <button id="ta-saveBtn" class="btn btn-secondary btn-sm">💾 프로젝트 저장</button>
+            <button id="ta-scriptBtn" class="btn btn-primary btn-sm">✍️ 대본 생성</button>
+          </div>
+        </div>
+        <div id="ta-result" class="analysis-result markdown-body"></div>
+      </div>
+      <div class="section-card empty-guide" id="ta-guide">
+        <div class="guide-icon">🤖</div>
+        <p>제품 정보를 입력하고 분석 버튼을 누르면<br>AI가 마케팅 소구점, 타겟 고객, 대본 기획안을<br>자동으로 분석합니다.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── 탭: 영상 초정밀 분석 ─── -->
+<div class="tab-panel" id="tab-vision">
+  <div class="two-col-layout">
+    <div class="col-left">
+      <div class="section-card">
+        <h3 class="section-title">🎬 영상/프레임 분석</h3>
+        <p class="section-sub">해외 영상(틱톡, 샤오홍슈 등)을 업로드하면 AI가 제품을 자동 식별합니다.</p>
+
+        <!-- 드래그 앤 드롭 -->
+        <div id="dropZone" class="drop-zone">
+          <div class="drop-icon">📹</div>
+          <p class="drop-title">영상 파일을 드래그하거나 클릭하여 업로드</p>
+          <p class="drop-hint">MP4, MOV, AVI 지원 · 최대 500MB</p>
+          <input type="file" id="videoInput" accept="video/*" hidden />
+        </div>
+
+        <!-- 프레임 미리보기 -->
+        <div id="framePreview" class="frame-grid hidden"></div>
+
+        <!-- 프레임 추출 진행 -->
+        <div id="frameProgress" class="frame-progress hidden">
+          <div class="progress-bar"><div id="progressFill" class="progress-fill"></div></div>
+          <span id="progressText" class="progress-text">프레임 추출 중...</span>
+        </div>
+
+        <button id="vision-analyzeBtn" class="btn btn-primary btn-full" disabled>
+          <span id="vision-btnText">⚡ AI 초정밀 분석 시작</span>
+          <div id="vision-spinner" class="btn-spinner hidden"></div>
+        </button>
+      </div>
+    </div>
+
+    <div class="col-right">
+      <div class="section-card result-card" id="vision-resultCard" style="display:none">
+        <div class="result-header">
+          <h3 class="section-title">🔬 초정밀 분석 결과</h3>
+          <div class="result-actions">
+            <button id="vision-saveBtn" class="btn btn-secondary btn-sm">💾 저장</button>
+            <button id="vision-scriptBtn" class="btn btn-primary btn-sm">✍️ 대본 생성</button>
+          </div>
+        </div>
+        <div id="vision-result" class="analysis-result markdown-body"></div>
+      </div>
+      <div class="section-card empty-guide" id="vision-guide">
+        <div class="guide-icon">🔬</div>
+        <p><strong>제품 초정밀 분석 기능</strong><br><br>
+          영상에서 프레임을 자동 추출하여<br>
+          Gemini Vision AI가 제품을 식별하고<br>
+          마케팅 소구점을 분석합니다.
+        </p>
+        <ul class="guide-list">
+          <li>✅ 언어 무관 — 해외 영상 그대로 분석</li>
+          <li>✅ 제품명 · 스펙 · 가격대 자동 추정</li>
+          <li>✅ 핵심 소구점 Top 3 추출</li>
+          <li>✅ 타겟 고객 · 스토리텔링 제안</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}대본생성 — ShortsHelper{% endblock %}
+{% block topbar_title %}대본생성{% endblock %}
+
+{% block content %}
+<div class="two-col-layout">
+  <!-- 입력 폼 -->
+  <div class="col-left">
+    <div class="section-card">
+      <h3 class="section-title">✍️ 대본 정보 입력</h3>
+
+      <div class="form-group">
+        <label class="form-label">제품명 *</label>
+        <input type="text" id="sc-productName" class="form-input"
+               placeholder="예: 에어프라이어 전용 라이너" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">카테고리</label>
+        <select id="sc-category" class="form-select">
+          <option value="생활용품">생활용품</option>
+          <option value="주방용품">주방용품</option>
+          <option value="인테리어">인테리어</option>
+          <option value="뷰티">뷰티</option>
+          <option value="건강">건강</option>
+          <option value="육아">육아</option>
+          <option value="디지털">디지털</option>
+          <option value="기타">기타</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">주요 특징 *</label>
+        <textarea id="sc-features" class="form-textarea" rows="3"
+                  placeholder="제품의 핵심 기능, 차별점, 장점을 입력하세요."></textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">타겟 고객</label>
+        <textarea id="sc-target" class="form-textarea" rows="2"
+                  placeholder="예: 1인 가구 20-30대, 요리 초보자"></textarea>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group flex1">
+          <label class="form-label">쇼츠 길이</label>
+          <select id="sc-duration" class="form-select">
+            <option value="15">15초</option>
+            <option value="20">20초</option>
+            <option value="30" selected>30초</option>
+            <option value="60">60초</option>
+            <option value="90">90초</option>
+          </select>
+        </div>
+        <div class="form-group flex1">
+          <label class="form-label">톤 & 스타일</label>
+          <select id="sc-tone" class="form-select">
+            <option value="friendly">친근한</option>
+            <option value="professional">전문적</option>
+            <option value="humorous">유머러스</option>
+            <option value="urgent">긴박감</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">추가 요청사항 (선택)</label>
+        <textarea id="sc-extra" class="form-textarea" rows="2"
+                  placeholder="특별히 강조하고 싶은 내용이 있으면 입력하세요."></textarea>
+      </div>
+
+      <button id="sc-generateBtn" class="btn btn-primary btn-full">
+        <span id="sc-btnText">🚀 대본 생성</span>
+        <div id="sc-spinner" class="btn-spinner hidden"></div>
+      </button>
+    </div>
+  </div>
+
+  <!-- 결과 영역 -->
+  <div class="col-right">
+    <div class="section-card result-card" id="sc-resultCard" style="display:none">
+      <div class="result-header">
+        <h3 class="section-title">📄 생성된 대본</h3>
+        <div class="result-actions">
+          <button id="sc-copyBtn" class="btn btn-ghost btn-sm">📋 복사</button>
+          <button id="sc-saveBtn" class="btn btn-secondary btn-sm">💾 저장</button>
+          <button id="sc-regenBtn" class="btn btn-primary btn-sm">🔄 재생성</button>
+        </div>
+      </div>
+
+      <!-- 대본 섹션 렌더링 -->
+      <div id="sc-scriptSections" class="script-sections"></div>
+
+      <!-- 전체 텍스트 -->
+      <details class="raw-script-details">
+        <summary>전체 텍스트 보기</summary>
+        <pre id="sc-rawScript" class="raw-script"></pre>
+      </details>
+    </div>
+
+    <div class="section-card empty-guide" id="sc-guide">
+      <div class="guide-icon">🤖</div>
+      <p>제품 정보를 입력하고<br>대본 생성 버튼을 누르면<br>AI가 쇼핑쇼츠 대본을 자동으로 작성합니다.</p>
+      <ul class="guide-list">
+        <li>✅ 훅 → 문제제시 → 제품소개 → CTA 구조</li>
+        <li>✅ 길이별 최적화 (15초 ~ 90초)</li>
+        <li>✅ 톤 & 스타일 선택 가능</li>
+        <li>✅ 프로젝트에 저장하여 관리</li>
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}

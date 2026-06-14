@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}대시보드 — ShortsHelper{% endblock %}
+{% block topbar_title %}대시보드{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h2 class="page-title">안녕하세요 👋</h2>
+    <p class="page-sub">오늘도 쇼핑쇼츠 대본을 효율적으로 만들어 보세요.</p>
+  </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="kpi-grid" id="kpiGrid">
+  <div class="kpi-card">
+    <div class="kpi-icon">🎬</div>
+    <div class="kpi-body">
+      <div class="kpi-label">오늘 분석한 영상</div>
+      <div class="kpi-value" id="kpiAnalyzed">0</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-icon">✍️</div>
+    <div class="kpi-body">
+      <div class="kpi-label">생성된 대본 수</div>
+      <div class="kpi-value" id="kpiScripts">0</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-icon">📁</div>
+    <div class="kpi-body">
+      <div class="kpi-label">저장된 프로젝트</div>
+      <div class="kpi-value" id="kpiProjects">0</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-icon">🔥</div>
+    <div class="kpi-body">
+      <div class="kpi-label">이번 주 인기 소재</div>
+      <div class="kpi-value" id="kpiHot">12</div>
+    </div>
+  </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="section-card">
+  <h3 class="section-title">⚡ 5분 안에 쇼핑쇼츠 대본 만들기</h3>
+  <p class="section-sub">원하는 작업을 선택해서 바로 시작하세요.</p>
+  <div class="quick-actions">
+    <a href="/explore" class="quick-btn">
+      <span class="qb-icon">🔍</span>
+      <span class="qb-label">소재 탐색 시작</span>
+      <span class="qb-desc">YouTube 트렌드 & 인기 키워드 분석</span>
+    </a>
+    <a href="/analysis" class="quick-btn">
+      <span class="qb-icon">🎬</span>
+      <span class="qb-label">영상 분석 시작</span>
+      <span class="qb-desc">AI가 제품을 자동 식별하고 분석</span>
+    </a>
+    <a href="/script" class="quick-btn">
+      <span class="qb-icon">✍️</span>
+      <span class="qb-label">대본 생성 시작</span>
+      <span class="qb-desc">제품 정보 입력 → AI 대본 자동 생성</span>
+    </a>
+  </div>
+</div>
+
+<!-- Recent Projects -->
+<div class="section-card">
+  <div class="section-header-row">
+    <h3 class="section-title">📂 최근 프로젝트</h3>
+    <a href="/projects" class="btn btn-ghost btn-sm">전체 보기 →</a>
+  </div>
+  <div id="recentProjectsWrap">
+    <table class="data-table" id="recentTable">
+      <thead>
+        <tr>
+          <th>프로젝트명</th>
+          <th>카테고리</th>
+          <th>생성일</th>
+          <th>상태</th>
+          <th>액션</th>
+        </tr>
+      </thead>
+      <tbody id="recentTbody">
+        <tr><td colspan="5" class="empty-row">저장된 프로젝트가 없습니다.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
