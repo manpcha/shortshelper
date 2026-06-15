@@ -19,6 +19,7 @@
         <option value="completed">완료</option>
         <option value="archived">보관</option>
       </select>
+      <button type="button" id="migrateLocalBtn" class="btn btn-ghost btn-sm">📥 프로젝트 가져오기</button>
     </div>
   </div>
 
@@ -49,7 +50,6 @@
     </div>
 
     <div class="modal-body">
-      <!-- 기본 정보 -->
       <div class="modal-section">
         <h4 class="modal-sub">기본 정보</h4>
         <div class="info-grid">
@@ -62,16 +62,34 @@
         </div>
       </div>
 
-      <!-- 분석 결과 -->
-      <div class="modal-section" id="md-analysisSection" style="display:none">
-        <h4 class="modal-sub">📊 영상 분석 결과</h4>
-        <div id="md-analysis" class="analysis-result" style="max-height:420px;overflow-y:auto"></div>
-      </div>
+      <div class="modal-section" id="md-contentTabs">
+        <div class="modal-tabs">
+          <button type="button" class="modal-tab active" data-tab="script">✍️ 대본 보기</button>
+          <button type="button" class="modal-tab" data-tab="analysis">📊 영상분석결과 보기</button>
+        </div>
 
-      <!-- 대본 -->
-      <div class="modal-section" id="md-scriptSection" style="display:none">
-        <h4 class="modal-sub">✍️ 저장된 대본</h4>
-        <pre id="md-script" class="raw-script compact"></pre>
+        <div id="md-tab-script" class="modal-tab-panel active">
+          <div id="md-script-empty" class="modal-empty-state" style="display:none">정보 없음</div>
+          <pre id="md-script" class="raw-script compact" style="display:none"></pre>
+          <div class="modal-subsection" id="md-ttsSection" style="display:none;margin-top:16px">
+            <h4 class="modal-sub">🎙️ MP3 음성</h4>
+            <p class="section-sub" style="margin-bottom:10px">Despina · 속도 1.1x · 문장 단위 합성</p>
+            <button type="button" id="md-mp3Btn" class="btn btn-primary btn-sm">🎙️ MP3 생성</button>
+            <div id="md-ttsProgress" class="hidden" style="margin-top:12px">
+              <div class="progress-bar"><div id="md-ttsProgressFill" class="progress-fill" style="width:0%"></div></div>
+              <p id="md-ttsProgressMsg" class="progress-text">준비 중...</p>
+            </div>
+            <div id="md-ttsPlayer" class="hidden" style="margin-top:12px">
+              <audio id="md-ttsAudio" controls style="width:100%;border-radius:6px;margin-bottom:8px"></audio>
+              <a id="md-ttsDownload" class="btn btn-ghost btn-sm btn-full" download="tts.mp3">⬇️ MP3 다운로드</a>
+            </div>
+          </div>
+        </div>
+
+        <div id="md-tab-analysis" class="modal-tab-panel">
+          <div id="md-analysis-empty" class="modal-empty-state" style="display:none">정보 없음</div>
+          <div id="md-analysis" class="analysis-result" style="max-height:420px;overflow-y:auto;display:none"></div>
+        </div>
       </div>
     </div>
 

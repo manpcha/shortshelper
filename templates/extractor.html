@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}제품명 추출기 — ShortsHelper{% endblock %}
+{% block topbar_title %}제품명 추출기{% endblock %}
+
+{% block content %}
+<div class="extractor-page">
+  <div class="section-card extractor-card">
+    <h3 class="section-title">🔍 제품명 추출기</h3>
+    <p class="section-sub">사진을 업로드하면 AI가 제품명을 중국어로 추출해드립니다 (샤오홍수 / 더우인용)</p>
+
+    <!-- 1단계: 이미지 업로드 -->
+    <div class="extractor-step" id="extractStep1">
+      <div class="step-header">📤 1단계: 이미지 업로드</div>
+
+      <div id="imgDropZone" class="drop-zone extractor-drop-zone">
+        <div id="dropPlaceholder">
+          <div class="drop-icon">📷</div>
+          <p class="drop-title">이미지를 드래그 &amp; 드롭하거나 클릭하여 업로드</p>
+          <p class="drop-hint">JPG · PNG · WEBP 지원</p>
+          <button type="button" class="btn btn-secondary btn-sm" id="pickImageBtn">파일 선택</button>
+        </div>
+        <div id="uploadPreviewWrap" class="upload-preview-wrap hidden">
+          <img id="uploadedPreview" alt="업로드된 이미지" />
+        </div>
+        <input type="file" id="imgFileInput" accept="image/jpeg,image/png,image/webp,image/gif,image/*" hidden />
+      </div>
+      <p class="upload-success hidden" id="uploadSuccess">✓ 이미지가 업로드되었습니다</p>
+    </div>
+
+    <!-- 2단계: 추출 버튼 -->
+    <div class="extractor-step hidden" id="extractStep2">
+      <div class="step-header">📷 2단계: 제품명 추출</div>
+      <button type="button" class="btn btn-primary btn-full" id="extractBtn">📷 &nbsp;제품명 추출하기</button>
+      <div class="spinner-wrap hidden" id="extractSpinner"><div class="spinner"></div></div>
+    </div>
+
+    <!-- 3단계: 결과 -->
+    <div class="extractor-step hidden" id="extractStep3">
+      <div class="step-header">📋 3단계: 제품명 결과 (개별 복사 가능)</div>
+      <div id="keywordList" class="keyword-list"></div>
+      <div class="platform-btns">
+        <button type="button" class="btn-platform btn-xiaohongshu" id="btnXiaohongshu">
+          🌸 샤오홍수 연결
+        </button>
+        <button type="button" class="btn-platform btn-douyin" id="btnDouyin">
+          🎵 더우인 연결
+        </button>
+        <button type="button" class="btn-platform btn-google" id="btnGoogle">
+          🔍 구글 연결
+        </button>
+      </div>
+      <div class="lens-search-row">
+        <button type="button" class="btn-platform btn-lens btn-full" id="btnGoogleLens">
+          📷 Google Lens 이미지 검색
+        </button>
+        <p class="lens-hint">업로드한 제품 사진으로 Google Lens 검색 (키워드 선택 불필요)</p>
+      </div>
+      <div style="margin-top:10px">
+        <button type="button" class="btn btn-ghost btn-sm" id="extractResetBtn">↺ 다시 시작</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

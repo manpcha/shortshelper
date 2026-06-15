@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+{% block title %}벤치마킹 — ShortsHelper{% endblock %}
+{% block topbar_title %}벤치마킹{% endblock %}
+
+{% block content %}
+<div class="benchmark-page">
+  <div class="section-card">
+    <h3 class="section-title">📊 쇼핑쇼츠 벤치마킹</h3>
+    <p class="section-sub">경쟁 채널의 쇼츠를 분석하여 반복 노출 상품, 고조회 영상, 제목 패턴을 자동 추출합니다. (설정에 저장된 API 사용)</p>
+  </div>
+
+  <!-- 1. 채널 목록 -->
+  <div class="section-card">
+    <h3 class="section-title">1. 채널 목록</h3>
+    <textarea id="bmChannels" class="form-input bm-textarea" rows="8"
+              data-default="{{ default_channels }}"
+              placeholder="YouTube URL, @handle, Channel ID (한 줄에 하나)">{{ default_channels }}</textarea>
+    <div class="btn-row" style="margin-top:10px">
+      <button type="button" class="btn btn-secondary" id="bmVerifyBtn">채널 확인</button>
+      <button type="button" class="btn btn-ghost btn-sm" id="bmResetChannelsBtn">기본 채널 복원</button>
+    </div>
+    <div id="bmChannelResult" class="hidden" style="margin-top:14px">
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr><th>No</th><th>채널명</th><th>구독자</th><th>URL</th><th>상태</th></tr>
+          </thead>
+          <tbody id="bmChannelTbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. 분석 조건 -->
+  <div class="section-card">
+    <h3 class="section-title">2. 분석 조건</h3>
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label class="form-label">시작일</label>
+        <input type="date" id="bmStartDate" class="form-input" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">종료일</label>
+        <input type="date" id="bmEndDate" class="form-input" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">최소 조회수</label>
+        <input type="number" id="bmMinViews" class="form-input" value="50000" min="0" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">채널당 최대 영상 수</label>
+        <input type="number" id="bmMaxVideos" class="form-input" value="50" min="1" max="200" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">쇼츠 최대 길이 (초)</label>
+        <input type="number" id="bmMaxSeconds" class="form-input" value="75" min="1" max="300" />
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. 분석 방식 -->
+  <div class="section-card">
+    <h3 class="section-title">3. 분석 방식 / Whisper</h3>
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label class="form-label">분석 방식</label>
+        <select id="bmAnalysisMode" class="form-input">
+          <option value="subtitle_first" selected>자막 우선</option>
+          <option value="subtitle_whisper">자막 우선 + Whisper fallback</option>
+          <option value="whisper">Whisper 사용</option>
+          <option value="subtitle_only">자막만 사용</option>
+          <option value="title_only">제목/설명만</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Whisper 모델</label>
+        <select id="bmWhisperModel" class="form-input">
+          <option value="tiny" selected>tiny</option>
+          <option value="base">base</option>
+          <option value="small">small</option>
+          <option value="medium">medium</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. 실행 -->
+  <div class="section-card">
+    <div class="btn-row">
+      <button type="button" class="btn btn-primary" id="bmRunBtn">벤치마킹 분석 시작</button>
+      <button type="button" class="btn btn-ghost hidden" id="bmStopBtn">추출 중지</button>
+    </div>
+  </div>
+
+  <!-- 5. 진행 -->
+  <div class="section-card" id="bmProgressCard">
+    <h3 class="section-title">진행 상태</h3>
+    <div class="bm-status-row">
+      <span class="bm-status-badge" id="bmStatusBadge">대기 중</span>
+      <span id="bmProgressText">0%</span>
+    </div>
+    <div class="progress-bar" style="margin:10px 0"><div id="bmProgressFill" class="progress-fill" style="width:0%"></div></div>
+    <p class="bm-current-channel">현재 채널: <span id="bmCurrentChannel">-</span></p>
+    <div class="bm-log-box" id="bmLogBox">로그가 여기에 표시됩니다.</div>
+  </div>
+
+  <!-- 6. 결과 -->
+  <div class="section-card hidden" id="bmResultCard">
+    <div class="section-header-row">
+      <h3 class="section-title">분석 결과</h3>
+      <div class="btn-row">
+        <button type="button" class="btn btn-ghost btn-sm" id="bmDlRaw">원본 CSV</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="bmDlProducts">상품 집계 CSV</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="bmDlPatterns">패턴 CSV</button>
+      </div>
+    </div>
+
+    <div class="bm-results-layout" id="bmResultsLayout">
+      <div class="bm-results-main">
+    <div class="tab-bar bm-tabs">
+      <button type="button" class="tab-btn active" data-tab="raw">원본 데이터</button>
+      <button type="button" class="tab-btn" data-tab="products">TOP 상품</button>
+      <button type="button" class="tab-btn" data-tab="videos">TOP 영상</button>
+      <button type="button" class="tab-btn" data-tab="patterns">제목 패턴</button>
+      <button type="button" class="tab-btn" data-tab="summary">상품 집계</button>
+    </div>
+
+    <div class="bm-sort-row hidden" id="bmSortRow">
+      <label class="form-label">정렬</label>
+      <select id="bmSortSelect" class="form-input" style="max-width:200px">
+        <option value="views_desc">조회수순</option>
+        <option value="count_desc">등장횟수순</option>
+        <option value="channel_asc">채널순</option>
+      </select>
+    </div>
+
+    <div id="bmTabRaw" class="bm-tab-panel">
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>No</th><th>채널</th><th>제목</th><th>조회수</th><th>분석</th><th>업로드일</th>
+              <th>길이</th><th>상품명</th><th>브랜드</th><th>카테고리</th><th>URL</th>
+            </tr>
+          </thead>
+          <tbody id="bmRawTbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div id="bmTabProducts" class="bm-tab-panel hidden">
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th>순위</th><th>상품명</th><th>등장횟수</th><th>총조회수</th><th>평균조회수</th></tr></thead>
+          <tbody id="bmTopProductsTbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div id="bmTabVideos" class="bm-tab-panel hidden">
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th>채널</th><th>제목</th><th>조회수</th><th>분석</th><th>URL</th></tr></thead>
+          <tbody id="bmTopVideosTbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div id="bmTabPatterns" class="bm-tab-panel hidden">
+      <ol id="bmPatternsList" class="bm-patterns-list"></ol>
+    </div>
+    <div id="bmTabSummary" class="bm-tab-panel hidden">
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th>상품명</th><th>등장횟수</th><th>총조회수</th><th>평균조회수</th></tr></thead>
+          <tbody id="bmSummaryTbody"></tbody>
+        </table>
+      </div>
+    </div>
+      </div><!-- bm-results-main -->
+
+      <!-- 우측: 영상 심층 분석 패널 -->
+      <div class="bm-analysis-panel hidden" id="bmAnalysisPanel">
+        <div class="bm-analysis-header">
+          <h3 class="section-title" style="margin:0">🎬 영상 분석</h3>
+          <button type="button" class="btn btn-ghost btn-sm" id="bmAnalysisClose">✕</button>
+        </div>
+        <p class="bm-analysis-video-title" id="bmVaTitle">-</p>
+        <div id="bmVaProgress" class="hidden">
+          <div class="progress-bar"><div id="bmVaProgressFill" class="progress-fill" style="width:0%"></div></div>
+          <p class="progress-text" id="bmVaProgressMsg">분석 중...</p>
+        </div>
+        <div class="tab-bar bm-va-tabs" id="bmVaTabs">
+          <button type="button" class="tab-btn active" data-vtab="product">상품 정보</button>
+          <button type="button" class="tab-btn" data-vtab="features">특징</button>
+          <button type="button" class="tab-btn" data-vtab="selling">판매 포인트</button>
+          <button type="button" class="tab-btn" data-vtab="hook">후킹</button>
+          <button type="button" class="tab-btn" data-vtab="cta">CTA</button>
+          <button type="button" class="tab-btn" data-vtab="structure">영상 구조</button>
+          <button type="button" class="tab-btn" data-vtab="frames">프레임</button>
+        </div>
+        <div id="bmVaProduct" class="bm-va-panel info-grid"></div>
+        <div id="bmVaFeatures" class="bm-va-panel hidden"><ul id="bmVaFeaturesList" class="bm-bullet-list"></ul></div>
+        <div id="bmVaSelling" class="bm-va-panel hidden"><ul id="bmVaSellingList" class="bm-bullet-list"></ul></div>
+        <div id="bmVaHook" class="bm-va-panel hidden"><p id="bmVaHookText" class="bm-quote"></p></div>
+        <div id="bmVaCta" class="bm-va-panel hidden"><p id="bmVaCtaText" class="bm-quote"></p></div>
+        <div id="bmVaStructure" class="bm-va-panel hidden"><div id="bmVaStructureList"></div></div>
+        <div id="bmVaFrames" class="bm-va-panel hidden">
+          <div id="bmVaFrameGrid" class="frame-grid"></div>
+          <div id="bmVaFrameModal" class="bm-frame-modal hidden">
+            <img id="bmVaFrameLarge" alt="프레임 확대" />
+          </div>
+        </div>
+        <p id="bmVaWhyPopular" class="bm-why-popular hidden"></p>
+        <div class="btn-row bm-va-actions">
+          <button type="button" class="btn btn-secondary btn-sm" id="bmVaSaveMaterial">⭐ 소재 등록</button>
+          <button type="button" class="btn btn-primary btn-sm" id="bmVaGoScript">✍ 대본 생성</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="bmVaGoVideo">🎬 영상 생성</button>
+        </div>
+      </div>
+    </div><!-- bm-results-layout -->
+  </div>
+</div>
+{% endblock %}

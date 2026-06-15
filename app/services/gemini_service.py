@@ -25,7 +25,7 @@ def _call(model: str, parts: list, temperature: float = 0.75, max_tokens: int = 
         resp = requests.post(
             f"{url}?key={api_key}",
             json=payload,
-            timeout=60,
+            timeout=120,
             verify=False,
         )
     except requests.RequestException as e:
@@ -33,9 +33,15 @@ def _call(model: str, parts: list, temperature: float = 0.75, max_tokens: int = 
 
     if not resp.ok:
         try:
-            msg = resp.json().get("error", {}).get("message", resp.text)
+            err_json = resp.json().get("error", {})
+            msg = err_json.get("message", resp.text)
+            status = err_json.get("status", "")
         except Exception:
             msg = resp.text
+            status = ""
+
+        if resp.status_code == 403 or status == "PERMISSION_DENIED":
+            return {"error": f"권한 오류(PERMISSION_DENIED): 사용 중인 API 키가 '{model}' 모델에 접근 권한이 없습니다. 설정에서 무료 사용 가능한 모델(gemini-2.5-flash 등)로 변경하거나 유료 API 키를 사용하세요."}
         return {"error": f"Gemini API 오류 ({resp.status_code}): {msg}"}
 
     try:
@@ -51,11 +57,11 @@ def _call(model: str, parts: list, temperature: float = 0.75, max_tokens: int = 
         return {"error": f"응답 파싱 오류: {str(e)}"}
 
 
-def generate_text(prompt: str, model: str = "gemini-2.0-flash") -> dict:
-    return _call(model, [{"text": prompt}], temperature=0.75)
+def generate_text(prompt: str, model: str = "gemini-2.5-flash", temperature: float = 0.75) -> dict:
+    return _call(model, [{"text": prompt}], temperature=temperature)
 
 
-def generate_vision(frames: list[str], prompt: str, model: str = "gemini-2.0-flash") -> dict:
+def generate_vision(frames: list[str], prompt: str, model: str = "gemini-2.5-flash", max_tokens: int = 4096) -> dict:
     if not frames:
         return {"error": "분석할 프레임이 없습니다."}
 
@@ -63,4 +69,16 @@ def generate_vision(frames: list[str], prompt: str, model: str = "gemini-2.0-fla
     for frame in frames:
         parts.append({"inline_data": {"mime_type": "image/jpeg", "data": frame}})
 
-    return _call(model, parts, temperature=0.65, max_tokens=4096)
+    return _call(model, parts, temperature=0.65, max_tokens=max_tokens)
+
+
+def generate_image(image_b64: str, mime_type: str, prompt: str, model: str = "gemini-2.5-flash") -> dict:
+    """단일 이미지 + 텍스트 프롬프트로 Gemini Vision 호출"""
+    if not image_b64:
+        return {"error": "이미지가 없습니다."}
+
+    parts: list = [
+        {"text": prompt},
+        {"inline_data": {"mime_type": mime_type or "image/jpeg", "data": image_b64}},
+    ]
+    return _call(model, parts, temperature=0.5, max_tokens=512)

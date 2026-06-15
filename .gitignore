@@ -10,6 +10,7 @@ __pycache__/
 # TTS 프리셋 & 생성 파일
 data/tts_presets.json
 outputs/audio/*.mp3
+outputs/uploads/*
 
 # Google Cloud Credentials (절대 커밋 금지)
 *.json

@@ -109,69 +109,82 @@
                   placeholder="대본이 여기에 자동으로 채워집니다. 직접 편집할 수 있습니다."></textarea>
       </div>
 
-      <!-- 제공자 + 음성 불러오기 -->
-      <div class="form-row" style="align-items:flex-end;gap:8px">
-        <div class="form-group flex1">
+      <!-- 1행: 제공자 · 음성 · 선택 내용 -->
+      <div class="tts-toolbar-row">
+        <div class="tts-toolbar-field">
           <label class="form-label">TTS 제공자</label>
           <select id="tts-provider" class="form-select">
             <option value="elevenlabs">ElevenLabs</option>
             <option value="google">Google Cloud TTS</option>
           </select>
         </div>
-        <div class="form-group" style="padding-bottom:2px">
-          <button id="tts-loadVoicesBtn" class="btn btn-ghost btn-sm" style="white-space:nowrap">
-            📋 음성 목록 불러오기
-          </button>
+        <div class="tts-toolbar-action">
+          <button id="tts-loadVoicesBtn" class="tts-link-btn" type="button">음성목록 불러오기</button>
+        </div>
+        <div class="tts-toolbar-field tts-toolbar-voice">
+          <label class="form-label">음성 선택</label>
+          <select id="tts-voice" class="form-select">
+            <option value="">-- 음성 목록을 먼저 불러오세요 --</option>
+          </select>
+          <p id="tts-voiceError" class="tts-voice-error"></p>
+        </div>
+        <div class="tts-toolbar-field tts-toolbar-selected">
+          <label class="form-label">선택 내용</label>
+          <div class="tts-selection-tags">
+            <span id="tts-activeProvider" class="tts-tag">ElevenLabs</span>
+            <span id="tts-activeVoice" class="tts-tag">--</span>
+          </div>
         </div>
       </div>
 
-      <!-- 음성 선택 -->
-      <div class="form-group">
-        <label class="form-label">음성 선택</label>
-        <select id="tts-voice" class="form-select">
-          <option value="">-- 음성 목록을 먼저 불러오세요 --</option>
-        </select>
-      </div>
+      <!-- 2행: 속도 · ElevenLabs 파라미터 -->
+      <div class="tts-params-row">
+        <div class="tts-param-cell">
+          <label class="form-label">속도</label>
+          <div id="tts-rateVal" class="tts-value-box">1.0x</div>
+          <input type="range" id="tts-rate" class="tts-range" min="0.5" max="2.0" step="0.1" value="1.0" />
+        </div>
 
-      <!-- 속도 -->
-      <div class="form-group">
-        <label class="form-label">속도&nbsp;<span id="tts-rateVal" class="form-badge">1.0x</span></label>
-        <input type="range" id="tts-rate" class="tts-range" min="0.5" max="2.0" step="0.1" value="1.0" />
-      </div>
-
-      <!-- ElevenLabs 전용 옵션 -->
-      <div id="tts-elOptions">
-        <div class="form-row" style="gap:16px">
-          <div class="form-group flex1">
-            <label class="form-label">Stability&nbsp;<span id="tts-stabilityVal" class="form-badge">0.50</span></label>
+        <div id="tts-elOptions" class="tts-el-params">
+          <div class="tts-param-cell">
+            <label class="form-label">Stability</label>
+            <div id="tts-stabilityVal" class="tts-value-box">0.50</div>
             <input type="range" id="tts-stability" class="tts-range" min="0" max="1" step="0.05" value="0.5" />
           </div>
-          <div class="form-group flex1">
-            <label class="form-label">Similarity Boost&nbsp;<span id="tts-similarityVal" class="form-badge">0.75</span></label>
+          <div class="tts-param-cell">
+            <label class="form-label">Similarity Boost</label>
+            <div id="tts-similarityVal" class="tts-value-box">0.75</div>
             <input type="range" id="tts-similarity" class="tts-range" min="0" max="1" step="0.05" value="0.75" />
           </div>
-        </div>
-        <div class="form-row" style="gap:16px">
-          <div class="form-group flex1">
-            <label class="form-label">Style&nbsp;<span id="tts-styleVal" class="form-badge">0.00</span></label>
+          <div class="tts-param-cell tts-param-cell--narrow">
+            <label class="form-label">Style</label>
+            <div id="tts-styleVal" class="tts-value-box">0.00</div>
             <input type="range" id="tts-style" class="tts-range" min="0" max="1" step="0.05" value="0" />
           </div>
-          <div class="form-group flex1" style="display:flex;align-items:center;padding-top:22px">
-            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--text-2)">
-              <input type="checkbox" id="tts-speakerBoost" checked
-                     style="width:15px;height:15px;accent-color:var(--accent)" />
-              Speaker Boost
+          <div class="tts-param-cell tts-param-cell--toggle">
+            <label class="form-label">Speaker Boost</label>
+            <label class="tts-toggle">
+              <input type="checkbox" id="tts-speakerBoost" checked />
+              <span class="tts-toggle-box"></span>
             </label>
           </div>
         </div>
+
+        <div id="tts-googleOptions" class="tts-google-params hidden">
+          <div class="tts-param-cell">
+            <label class="form-label">Pitch</label>
+            <div id="tts-pitchVal" class="tts-value-box">0.0</div>
+            <input type="range" id="tts-pitch" class="tts-range" min="-10" max="10" step="0.5" value="0" />
+          </div>
+        </div>
       </div>
 
-      <!-- Google 전용 옵션 -->
-      <div id="tts-googleOptions" class="hidden">
-        <div class="form-group">
-          <label class="form-label">Pitch&nbsp;<span id="tts-pitchVal" class="form-badge">0.0</span></label>
-          <input type="range" id="tts-pitch" class="tts-range" min="-10" max="10" step="0.5" value="0" />
-        </div>
+      <div id="tts-googleSentenceRow" class="tts-option-row hidden">
+        <label class="tts-check-label">
+          <input type="checkbox" id="tts-sentenceSplit" checked />
+          <span>문장 단위 합성</span>
+          <span class="form-hint-inline">Chirp3 HD 간투사(음·어) 감소 · ffmpeg 필요</span>
+        </label>
       </div>
 
       <!-- 프리셋 저장 -->

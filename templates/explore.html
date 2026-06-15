@@ -5,8 +5,7 @@
 {% block content %}
 <!-- YouTube 검색 섹션 -->
 <div class="section-card">
-  <h3 class="section-title">🔍 YouTube 쇼츠 검색</h3>
-  <p class="section-sub">쇼츠 영상(1분 이하) · 댓글 30개 이상 필터 자동 적용</p>
+  <h3 class="section-title">🔍 유튜브 검색</h3>
 
   <div class="search-bar-row">
     <input type="text" id="searchQuery" class="form-input flex1"
@@ -14,12 +13,49 @@
     <button id="searchBtn" class="btn btn-primary">검색</button>
   </div>
 
-  <!-- 기간 필터 -->
-  <div class="period-chips" id="periodChips">
-    <button class="chip active" data-val="오늘">오늘</button>
-    <button class="chip" data-val="7일">7일</button>
-    <button class="chip" data-val="30일">30일</button>
-    <button class="chip" data-val="1년">1년</button>
+  <!-- 라디오 필터 그룹 -->
+  <div class="yt-filters">
+    <div class="yt-filter-row">
+      <span class="yt-filter-label">영상길이</span>
+      <label class="yt-radio-label"><input type="radio" name="yt-duration" value="shorts" checked> 1분이하</label>
+      <label class="yt-radio-label"><input type="radio" name="yt-duration" value="all"> 전체</label>
+    </div>
+    <div class="yt-filter-row">
+      <span class="yt-filter-label">검색기간</span>
+      <label class="yt-radio-label"><input type="radio" name="yt-period" value="오늘" checked> 오늘</label>
+      <label class="yt-radio-label"><input type="radio" name="yt-period" value="7일"> 7일</label>
+      <label class="yt-radio-label"><input type="radio" name="yt-period" value="30일"> 30일</label>
+      <label class="yt-radio-label"><input type="radio" name="yt-period" value="1년"> 1년</label>
+    </div>
+    <div class="yt-filter-row">
+      <span class="yt-filter-label">댓글 수</span>
+      <label class="yt-radio-label"><input type="radio" name="yt-comments" value="0" checked> 전체</label>
+      <label class="yt-radio-label"><input type="radio" name="yt-comments" value="30"> 30개 이상</label>
+    </div>
+    <div class="yt-filter-row">
+      <span class="yt-filter-label">검색 정렬</span>
+      <label class="yt-radio-label"><input type="radio" name="yt-order" value="relevance" checked> 관련성</label>
+      <label class="yt-radio-label"><input type="radio" name="yt-order" value="viewCount"> 조회수순</label>
+      <label class="yt-radio-label"><input type="radio" name="yt-order" value="date"> 최신순</label>
+      <label class="yt-radio-label"><input type="radio" name="yt-order" value="rating"> 평점순</label>
+    </div>
+  </div>
+
+  <!-- 결과 재정렬 -->
+  <div id="ytSortBar" class="yt-sort-bar hidden">
+    <div class="yt-sort-left">
+      <span class="yt-sort-label">결과 재정렬</span>
+      <div class="yt-sort-btns">
+        <button type="button" class="yt-sort-btn active" data-sort="viewCount">조회수순</button>
+        <button type="button" class="yt-sort-btn" data-sort="subCount">구독자순</button>
+        <button type="button" class="yt-sort-btn" data-sort="viralScore">🔥 떡상지수순</button>
+        <button type="button" class="yt-sort-btn" data-sort="date">최신순</button>
+      </div>
+    </div>
+    <div class="yt-sort-right">
+      <span id="ytResultCount" class="yt-result-count">대기 중...</span>
+      <button type="button" id="ytOrderToggle" class="yt-order-toggle" title="오름/내림차순">⬇️</button>
+    </div>
   </div>
 
   <!-- 검색 통계 -->
@@ -28,8 +64,51 @@
   <!-- 로딩 -->
   <div id="searchSpinner" class="spinner-wrap hidden"><div class="spinner"></div></div>
 
-  <!-- 결과 -->
-  <div id="videoResults" class="video-grid"></div>
+  <div class="explore-yt-layout" id="exploreYtLayout">
+    <div class="explore-yt-main">
+      <div id="videoResults" class="insight-video-grid"></div>
+    </div>
+
+    <!-- 우측: 영상 분석 패널 (벤치마킹과 동일) -->
+    <div class="bm-analysis-panel hidden" id="exAnalysisPanel">
+      <div class="bm-analysis-header">
+        <h3 class="section-title" style="margin:0">🎬 영상 분석</h3>
+        <button type="button" class="btn btn-ghost btn-sm" id="exAnalysisClose">✕</button>
+      </div>
+      <p class="bm-analysis-video-title" id="exVaTitle">-</p>
+      <div id="exVaProgress" class="hidden">
+        <div class="progress-bar"><div id="exVaProgressFill" class="progress-fill" style="width:0%"></div></div>
+        <p class="progress-text" id="exVaProgressMsg">분석 중...</p>
+      </div>
+      <div class="tab-bar bm-va-tabs" id="exVaTabs">
+        <button type="button" class="tab-btn active" data-vtab="product">상품 정보</button>
+        <button type="button" class="tab-btn" data-vtab="features">특징</button>
+        <button type="button" class="tab-btn" data-vtab="selling">판매 포인트</button>
+        <button type="button" class="tab-btn" data-vtab="hook">후킹</button>
+        <button type="button" class="tab-btn" data-vtab="cta">CTA</button>
+        <button type="button" class="tab-btn" data-vtab="structure">영상 구조</button>
+        <button type="button" class="tab-btn" data-vtab="frames">프레임</button>
+      </div>
+      <div id="exVaProduct" class="bm-va-panel info-grid"></div>
+      <div id="exVaFeatures" class="bm-va-panel hidden"><ul id="exVaFeaturesList" class="bm-bullet-list"></ul></div>
+      <div id="exVaSelling" class="bm-va-panel hidden"><ul id="exVaSellingList" class="bm-bullet-list"></ul></div>
+      <div id="exVaHook" class="bm-va-panel hidden"><p id="exVaHookText" class="bm-quote"></p></div>
+      <div id="exVaCta" class="bm-va-panel hidden"><p id="exVaCtaText" class="bm-quote"></p></div>
+      <div id="exVaStructure" class="bm-va-panel hidden"><div id="exVaStructureList"></div></div>
+      <div id="exVaFrames" class="bm-va-panel hidden">
+        <div id="exVaFrameGrid" class="frame-grid"></div>
+        <div id="exVaFrameModal" class="bm-frame-modal hidden">
+          <img id="exVaFrameLarge" alt="프레임 확대" />
+        </div>
+      </div>
+      <p id="exVaWhyPopular" class="bm-why-popular hidden"></p>
+      <div class="btn-row bm-va-actions">
+        <button type="button" class="btn btn-secondary btn-sm" id="exVaSaveMaterial">⭐ 소재 등록</button>
+        <button type="button" class="btn btn-primary btn-sm" id="exVaGoScript">✍ 대본 작성</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="exVaGoVideo">🎬 영상 생성</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- 쇼핑 키워드 트렌드 섹션 -->

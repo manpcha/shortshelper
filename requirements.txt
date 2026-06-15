@@ -5,4 +5,8 @@ python-dotenv
 requests
 python-multipart
 urllib3
-google-cloud-texttospeech
+certifi
+truststore
+google-auth
+youtube-transcript-api
+yt-dlp
